@@ -1,9 +1,9 @@
 # PYTHON FLASK APP WITH MYSQL INTEGRATION
-from flask import Flask, request, jsonify, render_template, redirect, url_for, make_response
+from flask import Flask, request, jsonify, render_template, redirect, url_for, make_response, Blueprint
 import mysql.connector
 import time
 
-app = Flask(__name__)
+records_api = Blueprint('records_api', __name__)
 
 # MySQL Configuration
 conn = mysql.connector.connect(
@@ -15,7 +15,7 @@ conn = mysql.connector.connect(
 cursor = conn.cursor(dictionary=True)
 
 # API: Get all records
-@app.route('/api/records', methods=['GET'])
+@records_api.route('/api/records', methods=['GET'])
 def get_records():
     cursor.execute("SELECT * FROM waste_collection_entry")
     records = cursor.fetchall()
@@ -24,7 +24,7 @@ def get_records():
     return response
 
 # API: Create a new record
-@app.route('/api/records', methods=['POST'])
+@records_api.route('/api/records', methods=['POST'])
 def add_record():
     data = request.get_json()
     query = ("INSERT INTO waste_collection_entry (id, date, location, driveType, houses, "
@@ -40,7 +40,7 @@ def add_record():
     return response
 
 # API: Update a record
-@app.route('/api/records/<int:record_id>', methods=['PUT'])
+@records_api.route('/api/records/<int:record_id>', methods=['PUT'])
 def update_record(record_id):
     data = request.get_json()
     query = ("UPDATE waste_collection_entry SET date=%s, location=%s, driveType=%s, houses=%s, "
@@ -56,7 +56,7 @@ def update_record(record_id):
     return response
 
 # API: Delete a record
-@app.route('/api/records/<int:record_id>', methods=['DELETE'])
+@records_api.route('/api/records/<int:record_id>', methods=['DELETE'])
 def delete_record(record_id):
     cursor.execute("DELETE FROM waste_collection_entry WHERE id = %s", (record_id,))
     conn.commit()
@@ -65,13 +65,13 @@ def delete_record(record_id):
     return response, 200
 
 # Simple Web UI
-@app.route('/')
+@records_api.route('/')
 def index():
     cursor.execute("SELECT * FROM waste_collection_entry")
     records = cursor.fetchall()
     return render_template('index.html', records=records)
 
-@app.route('/api/add', methods=['GET', 'POST'])
+@records_api.route('/api/add', methods=['GET', 'POST'])
 def add():
     data = request.form
     if request.is_json:
@@ -92,7 +92,7 @@ def add():
     response.headers['Content-Type'] = 'application/json'
     return response, 204
 
-@app.route('/api/delete/<id>', methods=['DELETE'])
+@records_api.route('/api/delete/<id>', methods=['DELETE'])
 def delete(id):
     cursor.execute("DELETE FROM waste_collection_entry WHERE id=%s", (id,))
     conn.commit()
@@ -100,7 +100,7 @@ def delete(id):
     response.headers['Content-Type'] = 'application/json'
     return response, 200
 
-@app.route('/api/update/<id>', methods=['POST'])
+@records_api.route('/api/update/<id>', methods=['POST'])
 def update(id):
     data = request.form
     query = ("UPDATE waste_collection_entry SET date=%s, location=%s, driveType=%s, houses=%s, "
@@ -112,11 +112,3 @@ def update(id):
     response = make_response(jsonify({"message": "Record {} updated successfully".format(id)}))
     response.headers['Content-Type'] = 'application/json'
     return response, 200
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
-# Note:
-# - Create an 'index.html' file inside a 'templates' folder with a form and table view.
-# - Replace 'your_password' with your MySQL root password.
-# - Install required packages: `pip install flask mysql-connector-python`

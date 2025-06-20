@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { projectsData } from '../../data/projectsData';
+import { WasteManagementProject } from '../../data/projectsData';
+import { fetchProjects, createProject, deleteProject } from '../../api/wasteManagementProjectsApi';
 import { Calendar, Edit, Trash2, Plus, X, Check } from 'lucide-react';
 
 const ProjectsManagementPage: React.FC = () => {
-  const [projects, setProjects] = useState(projectsData);
+  const [projects, setProjects] = useState<WasteManagementProject[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [loading, setLoading] = useState(false);
   
-  const [formData, setFormData] = useState({
-    id: '',
+  const [formData, setFormData] = useState<Omit<WasteManagementProject, 'id'> & { id?: string }>({
     title: '',
     description: '',
     date: '',
@@ -23,9 +24,14 @@ const ProjectsManagementPage: React.FC = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    setLoading(true);
+    fetchProjects()
+      .then(data => setProjects(data))
+      .catch(err => alert('Failed to fetch projects: ' + err))
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleEdit = (project: typeof projectsData[0]) => {
+  const handleEdit = (project: WasteManagementProject) => {
     setFormData(project);
     setEditingId(project.id);
     setIsAddingNew(false);
@@ -34,7 +40,6 @@ const ProjectsManagementPage: React.FC = () => {
 
   const handleAddNew = () => {
     setFormData({
-      id: Math.random().toString(36).substr(2, 9),
       title: '',
       description: '',
       date: '',
@@ -64,43 +69,44 @@ const ProjectsManagementPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (isAddingNew) {
-      // Add new project
-      setProjects(prev => [formData, ...prev]);
-    } else if (editingId) {
-      // Update existing project
-      setProjects(prev => 
-        prev.map(project => project.id === editingId ? formData : project)
-      );
+    setLoading(true);
+    try {
+      if (isAddingNew) {
+        // Add new project
+        const { id, ...projectData } = formData;
+        const newProject = await createProject(projectData);
+        setProjects(prev => [newProject, ...prev]);
+        alert('Project added successfully!');
+        window.location.reload();
+      } else if (editingId) {
+        // Update logic would go here (not implemented in API)
+        alert('Update functionality is not implemented in the API.');
+      }
+    } catch (err) {
+      alert('Failed to save project: ' + err);
+    } finally {
+      setLoading(false);
+      setFormData({
+        title: '',
+        description: '',
+        date: '',
+        location: '',
+        status: 'Upcoming',
+        wasteType: '',
+        houses: 0,
+        weight: 0,
+        image: '',
+        featured: false,
+      });
+      setEditingId(null);
+      setIsAddingNew(false);
     }
-    
-    // Reset form and editing state
-    setFormData({
-      id: '',
-      title: '',
-      description: '',
-      date: '',
-      location: '',
-      status: 'Upcoming',
-      wasteType: '',
-      houses: 0,
-      weight: 0,
-      image: '',
-      featured: false,
-    });
-    setEditingId(null);
-    setIsAddingNew(false);
-    
-    // Show success message (in a real app, use a toast component)
-    alert(isAddingNew ? 'Project added successfully!' : 'Project updated successfully!');
   };
 
   const handleCancel = () => {
     setFormData({
-      id: '',
       title: '',
       description: '',
       date: '',
@@ -116,9 +122,18 @@ const ProjectsManagementPage: React.FC = () => {
     setIsAddingNew(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this project?')) {
-      setProjects(prev => prev.filter(project => project.id !== id));
+      setLoading(true);
+      try {
+        await deleteProject(id);
+        setProjects(prev => prev.filter(project => project.id !== id));
+        alert('Project deleted successfully!');
+      } catch (err) {
+        alert('Failed to delete project: ' + err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -377,7 +392,7 @@ const ProjectsManagementPage: React.FC = () => {
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{project.title}</div>
                           <div className="text-sm text-gray-500 truncate max-w-xs">
-                            {project.description.substring(0, 60)}...
+                            {project.description}...
                           </div>
                         </div>
                       </div>

@@ -58,4 +58,4 @@ export const deleteWasteCollectionRecord = async (id: string): Promise<void> => 
     console.error('Error deleting waste collection record:', error);
     throw error;
   }
-}; 
+};

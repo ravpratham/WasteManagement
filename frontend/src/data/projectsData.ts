@@ -1,3 +1,17 @@
+export interface WasteManagementProject {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  location: string;
+  status: string;
+  wasteType: string;
+  houses: number;
+  weight: number;
+  image: string;
+  featured: boolean;
+}
+
 export const projectsData = [
   {
     id: '1',
